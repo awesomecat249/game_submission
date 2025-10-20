@@ -1,0 +1,5 @@
+remove the Save, New and Menu buttons as well as the log.
+
+replace all of the images with the following image.
+
+separate the 2 settings and gameplay interfaces.

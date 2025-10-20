@@ -1,0 +1,31 @@
+You are required to vibe code a game using any LLMs that you find suitable to achieve the goals. The aim is to deliver a complete web game that fits the theme:
+
+The game should take the form of a board game, card game, dice game, or any game topic of simple web game format.
+The gameplay mechanics must directly connect to the chosen social issue, making the game both educational and engaging.
+Suggested themes may include (but are not limited to):
+Climate change & sustainability
+Access to education
+Mental health & wellbeing
+Social equity & inclusion
+Community resilience
+So on
+Contestants need to decide on topics that suit their local context (either Vietnam or Australia).
+
+Game Requirements
+Your game must include at least the following screens/views:
+
+Menu
+Play
+Please free to add other approriate screens as you would like.
+
+Additional guidelines:
+
+The game must be in 2D. (Optional: or 3D if your team is able.)
+Game assets (sprites, backgrounds, sound effects, code logics, etc.) can also be generated using your choices of AI models such as ChatGPT, Gemini, Nano Banana, Sora, …, where appropriate.
+The game must only use HTML, CSS and Javascript. Feel free to use any HTML, CSS and JavaScript libraries/frameworks as long as it can run fully on the browser (only on front-end) without a need to install any additional installation or setup or backend.
+You can use any AI platform, extension, website or service to help you to create this game.
+
+
+I have an idea for a game: you play as a man in his late 20s living a dull life. Your job is to brighten his life by making new relationships, decorating your house, etc. Outline the full gameplay flow
+
+expand furhter, add more events, characters, endings, make the process of him regaining the light in his life slower
