@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Color My Life — v3</title>
+<style>
+:root{
+  --bg:#0b1220; --muted:#9fb0c4; --accent:#06b6d4; --good:#34d399; --soft:#f8fafc;
+  --glass: rgba(255,255,255,0.03);
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#071226,#02101a);font-family:var(--font);color:var(--soft);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+.app{width:100%;max-width:1100px;background:linear-gradient(180deg,rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:18px;box-shadow:0 10px 40px rgba(2,6,23,0.7)}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.h-title{font-size:20px;font-weight:800}
+.h-sub{color:var(--muted);font-size:13px}
+.flex{display:flex;gap:12px}
+.left{width:320px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:10px;padding:12px;border:1px solid rgba(255,255,255,0.03)}
+.btn{background:linear-gradient(90deg,var(--accent),#0892b3);border:none;color:#021426;padding:10px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+.btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+.small{font-size:13px}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.01);margin-bottom:6px}
+.statBar{height:8px;background:rgba(255,255,255,0.03);border-radius:6px;overflow:hidden}
+.statFill{height:100%;background:linear-gradient(90deg,var(--accent),#08a5c1)}
+.scene{height:520px;border-radius:8px;padding:12px 12px 160px;background:linear-gradient(180deg,#051824,#052a34);position:relative;overflow:hidden} /* increased bottom padding so bottom controls never overlap stats */
+.bg-overlay{position:absolute;inset:0;pointer-events:none;transition:filter 800ms ease, opacity 800ms ease}
+.monologue{position:absolute;left:16px;right:16px;top:16px;background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(255,255,255,0.02));padding:10px;border-radius:8px;font-style:italic;color:#e6f7ff;backdrop-filter: blur(4px);opacity:0;transform:translateY(-6px);transition:opacity 300ms, transform 300ms;}
+.monologue.show{opacity:1;transform:translateY(0);}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.action{padding:10px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700;background:linear-gradient(90deg,#38bdf8,#06b6d4);color:#021426}
+.action.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+.action[disabled]{opacity:0.5;cursor:not-allowed} /* visual for disabled actions */
+.log{height:120px;overflow:auto;padding:8px;background:rgba(0,0,0,0.06);border-radius:8px;font-size:13px}
+.portrait{
+  width: 180px;
+  height: 220px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(180deg,#0f1724,#0b1220);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.portrait img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;  /* changed from cover to contain */
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 500ms ease, transform 700ms ease;
+}
+.thumbnail{width:64px;height:44px;border-radius:6px;overflow:hidden;background:#0b1220;border:1px solid rgba(255,255,255,0.03)}
+.saveSlots{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.slot{display:flex;gap:8px;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+.slot.empty{opacity:0.5}
+.slot .meta{font-size:13px}
+.charName{font-weight:800}
+.overlay-particles{position:absolute;right:12px;bottom:12px;width:220px;height:220px;pointer-events:none;opacity:0.0;transition:opacity 800ms ease}
+.overlay-particles.show{opacity:1}
+.hidden{display:none}
+.settingsRow{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.langFlag{display:inline-block;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.02);cursor:pointer;margin-right:6px}
+
+/* prevent stat list from overflowing into the bottom controls */
+#statList{
+  max-height:180px; /* reduced from 220px */
+  overflow:auto;
+  margin-bottom:40px; /* add bottom margin to create space */
+}
+</style>
+</head>
+<body>
+<div class="app" role="application" aria-label="Color My Life v3">
+  <div class="header">
+    <div>
+      <div class="h-title">Color My Life — v3</div>
+    </div>
+    <div class="h-sub">Front-end prototype</div>
+  </div>
+
+  <div class="flex">
+    <div class="left">
+      <div class="card mainMenu" id="mainMenu">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Color My Life</div>
+          <div class="small">v3</div>
+        </div>
+        <div style="margin-top:10px" class="small">A story about finding color in life.</div>
+        
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:20px">
+          <button class="btn" id="btnPlay">Play Game</button>
+          <button class="btn secondary" id="btnSettings">Settings</button>
+          <button class="btn secondary" id="btnAbout">About</button>
+        </div>
+      </div>
+
+      <div class="card gameMenu hidden" id="gameMenu">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Game Menu</div>
+          <div class="small">v3</div>
+        </div>
+        <div class="saveSlots" id="saveSlots"></div>
+        
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+          <button class="btn" id="btnNew">New Game</button>
+          <button class="btn secondary" id="btnSave">Save Game</button>
+          <button class="btn secondary" id="btnLoad">Load Game</button>
+          <button class="btn secondary" id="btnBackToMain">Back to Main Menu</button>
+        </div>
+      </div>
+
+      <div class="card settingsMenu hidden" id="settingsMenu">
+        <div style="font-weight:800">Settings</div>
+        <div class="settingsRow">
+          <div class="small">Volume</div>
+          <input type="range" id="volume" min="0" max="100" value="70" />
+          <div class="small" style="margin-top:6px">Language</div>
+          <div><span class="langFlag" data-lang="en">EN</span><span class="langFlag" data-lang="vi">VI</span></div>
+        </div>
+        <button class="btn secondary" style="margin-top:12px" id="btnBackFromSettings">Back</button>
+      </div>
+
+    </div>
+
+    <div style="flex:1">
+      <div class="scene card" id="scene">
+        <div class="bg-overlay" id="bgOverlay"></div>
+        <div class="monologue" id="monologue"></div>
+
+        <div style="display:flex;gap:12px;align-items:flex-start;position:relative;z-index:2">
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div id="sceneTitle" style="font-weight:800;font-size:18px">Welcome</div>
+                <div id="sceneSub" class="small">Start a new game to choose who you'll meet.</div>
+              </div>
+              <div id="dayBox" class="small">Day <span id="dayNum">0</span> / 60</div>
+            </div>
+
+            <div id="mainText" class="small" style="margin-top:12px">This version includes animated characters, sfx, and save slots.</div>
+
+            <div class="controls" id="actions" style="margin-top:12px"></div>
+
+            <div style="margin-top:12px;display:flex;gap:12px">
+              <div style="flex:1" class="card small" id="eventBox">No event.</div>
+              <div style="width:220px">
+                <div class="card small">
+                  <div style="font-weight:800">Journal</div>
+                  <div id="journal" class="journal" style="margin-top:8px;max-height:140px;overflow:auto"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div style="width:220px">
+            <div style="display:flex;justify-content:space-between;width:100%">
+              <div class="portrait" id="portrait">
+                <div class="breath"></div>
+                <img id="portraitImg" src="" alt="Main character" />
+              </div>
+              
+              <div class="portrait" id="romancePortrait">
+                <div class="breath"></div>
+                <img id="rightPortrait" src="" alt="Romance character" />
+              </div>
+            </div>
+
+            <div style="margin-top:10px" class="card small">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font-weight:800">Stats</div>
+                <div id="moodLabel" class="small">—</div>
+              </div>
+              <div id="statList" style="margin-top:8px"></div>
+            </div>
+
+            <div class="overlay-particles" id="particles"><svg width="220" height="220"><circle cx="20" cy="30" r="2" fill="#ffd6e0" opacity="0.7"/><circle cx="60" cy="80" r="1.6" fill="#fff7d6" opacity="0.6"/><circle cx="140" cy="60" r="1.4" fill="#d6fff0" opacity="0.5"/></svg></div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Color My Life v3 — single-file prototype
+   Features: gender-selectable romance (Linh/Alex), 3 save slots, SFX via WebAudio, animated portraits, visuals.
+*/
+
+/* --- State --- */
+const MAX_DAYS = 60;
+let state = {
+  slot: 1,
+  day: 0,
+  name: "Minh",
+  genderRomance: "linh", // 'linh' or 'alex'
+  stats: { happiness:15, energy:80, money:50, social:10, confidence:5 },
+  journal: [],
+  language: 'en',
+  volume: 70,
+  romanceLevel: 0,
+  pet: false,
+  scene: 'menu' // menu or play or ending
+};
+
+/* --- Minimal character images as data URLs (SVG) --- */
+const characterImage = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="220" viewBox="0 0 180 220">
+  <circle cx="90" cy="70" r="60" fill="#FFD700"/>
+  <rect x="30" y="130" width="120" height="90" fill="#FFD700"/>
+  <circle cx="65" cy="60" r="10" fill="white"/>
+  <circle cx="115" cy="60" r="10" fill="white"/>
+  <circle cx="65" cy="60" r="5" fill="black"/>
+  <circle cx="115" cy="60" r="5" fill="black"/>
+  <path d="M 60 90 Q 90 100 120 90" fill="none" stroke="black" stroke-width="3"/>
+</svg>`);
+
+const img_lin = characterImage;
+const img_alx = characterImage;
+const img_player = characterImage;
+
+/* --- DOM refs --- */
+const saveSlotsEl = document.getElementById('saveSlots');
+const btnNew = document.getElementById('btnNew');
+const btnLoadSlot = document.getElementById('btnLoadSlot');
+const btnSettings = document.getElementById('btnSettings');
+const btnAbout = document.getElementById('btnAbout');
+const volumeEl = document.getElementById('volume');
+const langEls = document.querySelectorAll('.langFlag');
+const portrait = document.getElementById('portrait');
+const portraitImg = document.getElementById('portraitImg');
+const sceneTitle = document.getElementById('sceneTitle');
+const sceneSub = document.getElementById('sceneSub');
+const mainText = document.getElementById('mainText');
+const actions = document.getElementById('actions');
+const eventBox = document.getElementById('eventBox');
+const dayNum = document.getElementById('dayNum');
+const statList = document.getElementById('statList');
+const journalEl = document.getElementById('journal');
+const monologueEl = document.getElementById('monologue');
+const particles = document.getElementById('particles');
+const bgOverlay = document.getElementById('bgOverlay');
+
+/* --- WebAudio for SFX & simple BGM --- */
+let audioCtx = null;
+let masterGain = null;
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = state.volume/100;
+  masterGain.connect(audioCtx.destination);
+}
+function playClick(){
+  initAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sine'; o.frequency.value = 880;
+  g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.08, audioCtx.currentTime + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
+  o.connect(g); g.connect(masterGain);
+  o.start(); o.stop(audioCtx.currentTime + 0.2);
+}
+function playChime(){
+  initAudio();
+  const o = audioCtx.createOscillator();
+  const o2 = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.frequency.value = 660; o.type='sine';
+  o2.frequency.value = 990; o2.type='triangle';
+  g.gain.value = 0.0001;
+  g.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
+  o.connect(g); o2.connect(g); g.connect(masterGain);
+  o.start(); o2.start();
+  o.stop(audioCtx.currentTime + 0.6); o2.stop(audioCtx.currentTime + 0.6);
+}
+function setVolume(v){
+  state.volume = v;
+  if(masterGain) masterGain.gain.setTargetAtTime(v/100, audioCtx.currentTime, 0.02);
+  localSaveSlots();
+}
+
+/* --- Save slot system (3 slots) --- */
+function localSlotKey(n){ return 'color_mylife_slot_' + n; }
+function getSlot(n){
+  const raw = localStorage.getItem(localSlotKey(n));
+  return raw ? JSON.parse(raw) : null;
+}
+function saveToSlot(n){
+  const snapshot = Object.assign({}, state);
+  snapshot.savedAt = Date.now();
+  localStorage.setItem(localSlotKey(n), JSON.stringify(snapshot));
+  addLog('Saved to slot ' + n);
+  renderSaveSlots();
+}
+function loadFromSlot(n){
+  const data = getSlot(n);
+  if(!data){ addLog('Slot empty.'); alert('Slot is empty.'); return; }
+  state = data;
+  addLog('Loaded slot ' + n);
+  enterPlay();
+  renderAll();
+}
+
+/* Autosave nightly to slot 1 */
+function autoSaveNight(){
+  saveToSlot(1);
+}
+
+/* Render save slots UI */
+function renderSaveSlots(){
+  saveSlotsEl.innerHTML = '';
+  for(let i=1;i<=3;i++){
+    const s = getSlot(i);
+    const slot = document.createElement('div'); slot.className='slot' + (s ? '' : ' empty'); slot.dataset.slot = i;
+    const thumb = document.createElement('div'); thumb.className='thumbnail';
+    const meta = document.createElement('div'); meta.className='meta';
+    if(s){
+      const img = document.createElement('img'); img.src = s.genderRomance === 'linh' ? img_lin : img_alx; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover';
+      thumb.appendChild(img);
+      meta.innerHTML = `<div class="charName">${s.name} — Day ${s.day}</div><div style="font-size:12px;color:var(--muted)">Happiness ${Math.round(s.stats.happiness)}</div><div style="font-size:11px;color:var(--muted)">${s.genderRomance.toUpperCase()}</div>`;
+    } else {
+      thumb.innerHTML = 'Empty';
+      meta.innerHTML = `<div style="color:var(--muted);font-size:13px">Empty slot</div>`;
+    }
+    slot.appendChild(thumb); slot.appendChild(meta);
+    slot.addEventListener('click', ()=>{
+      // select slot
+      const idx = Number(slot.dataset.slot);
+      if(confirm('Load slot '+idx+'?')) loadFromSlot(idx);
+    });
+    saveSlotsEl.appendChild(slot);
+  }
+}
+
+/* --- UI helpers --- */
+function addLog(msg){
+  // Log removed, function now does nothing
+  console.log(msg); // Optional: keep logging to console for debugging
+}
+function clamp(v,a=0,b=100){ return Math.max(a, Math.min(b, v)); }
+
+/* --- Game logic (simplified) --- */
+const events = [
+  { id:1, title:"Old friend texts", text:"An old friend sends a photo. Do you reply?", A:{text:"Reply & meet", effects:{social:10,happiness:5,energy:-8}}, B:{text:"Leave it", effects:{social:-5,confidence:-2}} },
+  { id:2, title:"Unexpected rain", text:"Rain pours suddenly. What do you do?", A:{text:"Dance in the rain", effects:{happiness:10,energy:-6}}, B:{text:"Run home", effects:{energy:-2}} },
+  { id:3, title:"Neighbor asks help", text:"Linh asks for help. Help her?", A:{text:"Help", effects:{social:8,confidence:4}}, B:{text:"Refuse", effects:{social:-8}} },
+  { id:4, title:"Mom calls", text:"Your mom calls. Call back?", A:{text:"Call & chat", effects:{social:8,happiness:5}}, B:{text:"Text short reply", effects:{social:2}} },
+  // New events
+  { id:5, title:"Street musician", text:"A guitarist plays in the park. Stop to listen?", A:{text:"Stay awhile", effects:{happiness:8,energy:-4,money:-2}}, B:{text:"Walk past", effects:{}} },
+  { id:6, title:"Stray cat", text:"A cat follows you home. Feed it?", A:{text:"Share food", effects:{happiness:10,money:-5}}, B:{text:"Shoo away", effects:{happiness:-4}} },
+  { id:7, title:"Job opportunity", text:"A colleague mentions a better position.", A:{text:"Apply for it", effects:{confidence:12,energy:-15,money:15}}, B:{text:"Stay comfortable", effects:{confidence:-4}} },
+  { id:8, title:"Late night thoughts", text:"Can't sleep. Write in journal?", A:{text:"Write feelings", effects:{happiness:6,confidence:4,energy:-5}}, B:{text:"Force sleep", effects:{energy:-8}} },
+  { id:9, title:"Coffee invite", text:"Someone invites you for coffee.", A:{text:"Accept", effects:{social:12,energy:-8,money:-6}}, B:{text:"Decline", effects:{social:-6}} },
+  { id:10, title:"Plant wilting", text:"Your plant needs care. Buy supplies?", A:{text:"Save it", effects:{happiness:8,money:-10}}, B:{text:"Let it go", effects:{happiness:-5}} }
+];
+
+function startNewGame(){
+  // choose romance gender first
+  const choice = prompt("Choose who you'll meet: type 'linh' or 'alex' (case-insensitive). Default: linh");
+  state = {
+    slot: state.slot || 1,
+    day: 1,
+    name: prompt("Player name (default Minh):","Minh") || "Minh",
+    genderRomance: (choice && choice.toLowerCase()==='alex') ? 'alex' : 'linh',
+    stats: { happiness:15, energy:80, money:50, social:10, confidence:5 },
+    journal: [], language: state.language || 'en', volume: state.volume || 70, romanceLevel:0, pet:false, scene:'play'
+  };
+  setPortrait();
+  renderAll();
+  addLog('New game started. Romance: '+state.genderRomance);
+  playChime();
+  saveToSlot(1); // initial save
+}
+
+/* Actions */
+function setActionsForPlay(){
+  actions.innerHTML = '';
+  // If game has ended, don't show any actions
+  if(state.day >= MAX_DAYS) {
+    actions.innerHTML = '<div style="color:var(--muted);padding:10px;">Story complete. Thank you for playing.</div>';
+    return;
+  }
+  
+  const acts = [
+    {id:'decorate',label:'Decorate home'},
+    {id:'socialize',label:'Socialize'},
+    {id:'work',label:'Work overtime'},
+    {id:'selfcare',label:'Self-care'}
+  ];
+  acts.forEach(a=>{
+    const btn = document.createElement('button'); btn.className='action'; btn.innerText = a.label;
+    // disable actions that require energy when energy is 0 (except self-care)
+    if(state.stats.energy <= 0 && a.id !== 'selfcare'){
+      btn.disabled = true;
+      btn.className = 'action ghost';
+      btn.title = 'Too tired — rest first';
+    }
+    btn.addEventListener('click', ()=>{ performAction(a.id); playClick(); });
+    actions.appendChild(btn);
+  });
+}
+
+/* Perform action effects */
+function performAction(id){
+  const s = state.stats;
+  let entry = '';
+  // block energy-requiring actions if energy is zero
+  if(s.energy <= 0 && id !== 'selfcare'){
+    addLog('Too exhausted to act');
+    alert('You are too exhausted to do that. Rest first.');
+    return;
+  }
+
+  if(id==='decorate'){
+    if(s.money < 8){ addLog('Not enough money'); alert('Not enough money to decorate.'); return; }
+    s.money -= 8; s.happiness = clamp(s.happiness + 8); s.confidence = clamp(s.confidence + 2); s.energy = clamp(s.energy - 6);
+    entry = "Bought a plant and rug.";
+  } else if(id==='socialize'){
+    s.social = clamp(s.social + 10); s.happiness = clamp(s.happiness + 5 + Math.floor(s.confidence/10)); s.energy = clamp(s.energy - 10);
+    entry = "Met someone for coffee.";
+    // chance to trigger romance interaction
+    if(Math.random() < 0.35){
+      triggerRomanceMoment();
+    }
+  } else if(id==='work'){
+    s.money = clamp(s.money + 20); s.energy = clamp(s.energy - 18); s.happiness = clamp(s.happiness - 6);
+    entry = "Worked late for extra pay.";
+  } else if(id==='selfcare'){
+    s.energy = clamp(s.energy + 18); s.happiness = clamp(s.happiness + 6); s.confidence = clamp(s.confidence + 1);
+    entry = "Took time to breathe and journal.";
+  }
+  addLog(entry);
+  state.journal.push(`Day ${state.day}: ${entry} — "${monologueFor('after_action')}"`);
+  // small chance for event
+  if(Math.random() < 0.5) triggerRandomEvent();
+  endOfDay();
+  renderAll();
+  playChime();
+}
+
+/* Random events */
+function triggerRandomEvent(){
+  const ev = events[Math.floor(Math.random()*events.length)];
+  eventBox.innerHTML = `<div style="font-weight:800">${ev.title}</div><div style="margin-top:6px">${ev.text}</div>
+    <div style="margin-top:8px;display:flex;gap:6px"><button class="action" id="evA">${ev.A.text}</button><button class="action ghost" id="evB">${ev.B.text}</button></div>`;
+  document.getElementById('evA').addEventListener('click', ()=>{ applyEffects(ev.A.effects); eventBox.innerHTML='Event resolved.'; state.journal.push(`Day ${state.day}: ${ev.A.text}`); renderAll(); });
+  document.getElementById('evB').addEventListener('click', ()=>{ applyEffects(ev.B.effects); eventBox.innerHTML='Event resolved.'; state.journal.push(`Day ${state.day}: ${ev.B.text}`); renderAll(); });
+}
+
+/* Romance moments: animated portrait + increases romanceLevel */
+function triggerRomanceMoment(){
+  // show character speaking with portrait change; increase romance mildly
+  const who = state.genderRomance;
+  setPortrait(true);
+  const line = who==='linh' ? "Linh smiles and shares a small story." : "Alex jokes about the morning commute.";
+  eventBox.innerHTML = `<div style="font-weight:800">A quiet moment with ${who.charAt(0).toUpperCase()+who.slice(1)}</div><div style="margin-top:6px">${line}</div>`;
+  state.romanceLevel = clamp(state.romanceLevel + 8);
+  state.journal.push(`Day ${state.day}: A small moment with ${who}.`);
+  addLog('Romance increased to '+state.romanceLevel);
+  particles.classList.add('show');
+  setTimeout(()=>{ particles.classList.remove('show'); }, 3000);
+}
+
+/* Apply effects mapping */
+function applyEffects(effects){
+  for(const k in effects){
+    if(state.stats.hasOwnProperty(k)) state.stats[k] = clamp(state.stats[k] + effects[k]);
+    else if(k==='money') state.stats.money = state.stats.money + effects[k];
+  }
+}
+
+/* End of day processing */
+function endOfDay(){
+  state.day++;
+  state.stats.energy = clamp(state.stats.energy - 2);
+  if(state.day % 7 === 0) state.stats.confidence = clamp(state.stats.confidence + 1);
+  // adopt pet chance
+  if(!state.pet && state.stats.happiness >= 55 && Math.random() < 0.12){ state.pet = true; addLog('You adopted a small cat.'); }
+  // autosave to slot 1 nightly
+  autoSaveNight();
+  // Force ending at day 60
+  if(state.day >= MAX_DAYS) {
+    checkEnding();
+    state.scene = 'ending'; // Add new scene state
+    renderAll();
+  }
+}
+
+/* Monologues */
+function monologueFor(key){
+  const s = state.stats;
+  const base = {
+    morning: [
+      "The light through the blinds feels colder these days.",
+      "Same walls. Same ceiling.",
+      "Maybe today will be different. Maybe.",
+      "Another sunrise. The city wakes slowly.",
+      "The morning air feels crisp today.",
+      "Coffee might make this better."
+    ],
+    after_action: [
+      "It wasn't much, but at least I did something.",
+      "That didn't feel as bad as I thought it would.",
+      "Breathing felt like permission to exist for a minute.",
+      "Small steps still move forward.",
+      "The day feels a little lighter now.",
+      "Sometimes change is subtle like this."
+    ],
+    low: [
+      "I'm tired...",
+      "Maybe I should give my mom a call.",
+      "I watched the street from my window for a while.",
+      "The silence feels heavy today.",
+      "Everything takes so much energy.",
+      "Just need to make it through today."
+    ],
+    high: [
+      "The world has more color than before.",
+      "Maybe things are slowly changing.",
+      "I caught myself smiling today.",
+      "The future feels less gray somehow.",
+      "Small victories add up.",
+      "There's beauty in these quiet moments."
+    ]
+  };
+
+  let pool = base.after_action;
+  if(s.happiness < 25) pool = pool.concat(base.low);
+  if(s.happiness > 70) pool = pool.concat(base.high);
+  if(state.romanceLevel > 40) pool = pool.concat([
+    "When they smiled, it echoed in the quiet corners of my mind.",
+    "Their presence makes the room feel warmer.",
+    "Some connections change everything.",
+    "The way they see the world is contagious.",
+    "Their laughter makes the day brighter."
+  ]);
+  if(state.pet) pool = pool.concat([
+    "The cat purrs softly nearby.",
+    "Having a pet makes the apartment feel less empty.",
+    "Small paws make quiet sounds at night."
+  ]);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* Portrait setting and animation */
+function setPortrait(animate=false){
+  if(state.scene === 'menu') return;
+  
+  const handleImageError = (img) => {
+    console.error('Failed to load image:', img.src);
+    img.src = './images/character.png'; // Fallback to local image
+  };
+  
+  // Set both portraits
+  portraitImg.src = img_player;
+  portraitImg.onerror = () => handleImageError(portraitImg);
+  
+  const rightPortrait = document.getElementById('rightPortrait');
+  rightPortrait.src = state.genderRomance === 'linh' ? img_lin : img_alx;
+  rightPortrait.onerror = () => handleImageError(rightPortrait);
+  
+  portrait.classList.remove('show');
+  const romancePortrait = document.getElementById('romancePortrait');
+  romancePortrait.classList.remove('show');
+  
+  setTimeout(() => {
+    portrait.classList.add('show');
+    romancePortrait.classList.add('show');
+  }, animate ? 40 : 200);
+}
+
+/* Check endings */
+function checkEnding(){
+  const s = state.stats;
+  let ending = {title:'',text:''};
+  if(s.happiness >= 70 && state.romanceLevel >= 70) ending = {title:'They Found Light — Together', text:'They share morning coffee and small laughter. The world looks kinder.'};
+  else if(s.happiness >= 70) ending = {title:'Light Within', text:'He learned to smile at small things; life gained color.'};
+  else ending = {title:'Still Gray', text:'Progress was slow — but he holds a new fragile hope.'};
+  // show ending
+  sceneTitle.innerText = 'Ending — ' + ending.title;
+  mainText.innerText = ending.text;
+  actions.innerHTML = '';
+  eventBox.innerHTML = '';
+  addLog('Game ended: ' + ending.title);
+  alert('Game ended: ' + ending.title);
+}
+
+/* Render helpers */
+function renderStats(){
+  statList.innerHTML = '';
+  const items = ['happiness','energy','money','social','confidence'];
+  items.forEach(k=>{
+    const v = clamp(Math.round(state.stats[k]));
+    const div = document.createElement('div'); div.className='stat';
+    div.innerHTML = `<div style="font-weight:700">${k.charAt(0).toUpperCase()+k.slice(1)}</div><div style="width:60%"><div class="statBar"><div class="statFill" style="width:${v}%"></div></div></div><div style="min-width:36px;text-align:right">${v}</div>`;
+    statList.appendChild(div);
+  });
+  dayNum.innerText = state.day;
+  // mood label
+  const h = state.stats.happiness;
+  const mood = h < 30 ? 'Gloomy' : h < 60 ? 'Stable' : 'Bright';
+  document.getElementById('moodLabel').innerText = mood;
+  
+  // Enhanced brightness adjustments based on happiness
+  const brightnessLevel = h/100; // 0 to 1
+  const grayscaleLevel = Math.max(0, 100 - h); // 100 to 0
+  const saturateLevel = 1 + (h/100); // 1 to 2
+  
+  bgOverlay.style.filter = `
+    brightness(${0.7 + (brightnessLevel * 0.5)})
+    grayscale(${grayscaleLevel}%)
+    saturate(${saturateLevel})
+  `;
+
+  // Enhanced page brightness
+  const pageFilter = `
+    brightness(${1 + (brightnessLevel * 0.3)})
+    contrast(${100 + (h * 0.2)}%)
+  `;
+  document.body.style.filter = pageFilter;
+  
+  // Adjust background gradient based on happiness
+  const darkColor = h < 30 ? '#02101a' : h < 60 ? '#071226' : '#0c1832';
+  const lightColor = h < 30 ? '#071226' : h < 60 ? '#0c1832' : '#102040';
+  document.body.style.background = `linear-gradient(180deg,${lightColor},${darkColor})`;
+}
+
+/* Render main UI */
+function renderAll(){
+  renderSaveSlots();
+  renderStats();
+  journalEl.innerHTML = state.journal.slice().reverse().map(s=>`<div style="padding:6px 0;border-bottom:1px dashed rgba(255,255,255,0.02)">${s}</div>`).join('');
+  
+  // Always set portraits
+  setPortrait();
+  
+  if(state.scene === 'ending'){
+    sceneTitle.innerText = `${state.name}'s Story — Complete`;
+    sceneSub.innerText = 'Day 60 — Journey\'s End';
+    mainText.innerText = 'Thank you for playing. Your story has reached its conclusion.';
+    actions.innerHTML = '';
+    eventBox.innerHTML = 'Story complete.';
+  } else if(state.scene === 'menu'){
+    sceneTitle.innerText = 'Welcome';
+    sceneSub.innerText = 'Select a save slot or start a new game.';
+    mainText.innerText = 'Choose settings and then press New Game.';
+    actions.innerHTML = '';
+    // Clear portraits in menu
+    portraitImg.src = '';
+    document.getElementById('rightPortrait').src = '';
+  } else {
+    sceneTitle.innerText = `${state.name}'s Apartment`;
+    sceneSub.innerText = `Day ${state.day} — ${getChapterName()}`;
+    mainText.innerText = monologueFor('after_action');
+    setActionsForPlay();
+  }
+}
+
+/* Get chapter name */
+function getChapterName(){
+  if(state.day <=15) return 'The Gray';
+  if(state.day <=30) return 'The Flicker';
+  if(state.day <=45) return 'The Color';
+  return 'The Light';
+}
+
+/* Slot UI events */
+function showMainMenu() {
+  document.getElementById('mainMenu').classList.remove('hidden');
+  document.getElementById('gameMenu').classList.add('hidden');
+  document.getElementById('settingsMenu').classList.add('hidden');
+  state.scene = 'menu';
+  renderAll();
+}
+
+function showGameMenu() {
+  document.getElementById('mainMenu').classList.add('hidden');
+  document.getElementById('gameMenu').classList.remove('hidden');
+  document.getElementById('settingsMenu').classList.add('hidden');
+  if(state.scene !== 'menu') {
+    setPortrait();
+    renderAll();
+  }
+}
+
+function showSettings() {
+  document.getElementById('mainMenu').classList.add('hidden');
+  document.getElementById('gameMenu').classList.add('hidden');
+  document.getElementById('settingsMenu').classList.remove('hidden');
+}
+
+document.getElementById('btnPlay').addEventListener('click', showGameMenu);
+document.getElementById('btnSettings').addEventListener('click', showSettings);
+document.getElementById('btnBackToMain').addEventListener('click', showMainMenu);
+document.getElementById('btnBackFromSettings').addEventListener('click', showMainMenu);
+document.getElementById('btnNew').addEventListener('click', startNewGame);
+document.getElementById('btnSave').addEventListener('click', ()=>{ 
+  const s = prompt('Save to which slot? (1-3)'); 
+  if(s && s >= 1 && s <= 3) saveToSlot(Number(s)); 
+});
+document.getElementById('btnLoad').addEventListener('click', ()=>{ 
+  const s = prompt('Load which slot? (1-3)'); 
+  if(s && s >= 1 && s <= 3) loadFromSlot(Number(s)); 
+});
+document.getElementById('btnMenu').addEventListener('click', showMainMenu);
+document.getElementById('btnAbout').addEventListener('click', ()=>{ alert('Color My Life v3 — Prototype. Gender-selectable romance. SFX & Save Slots.'); });
+
+function startNewGame() {
+  // choose romance gender first
+  const choice = prompt("Choose who you'll meet: type 'linh' or 'alex' (case-insensitive). Default: linh");
+  state = {
+    slot: state.slot || 1,
+    day: 1,
+    name: prompt("Player name (default Minh):","Minh") || "Minh",
+    genderRomance: (choice && choice.toLowerCase()==='alex') ? 'alex' : 'linh',
+    stats: { happiness:15, energy:80, money:50, social:10, confidence:5 },
+    journal: [], language: state.language || 'en', volume: state.volume || 70, romanceLevel:0, pet:false, scene:'play'
+  };
+  setPortrait();
+  renderAll();
+  addLog('New game started. Romance: '+state.genderRomance);
+  playChime();
+  saveToSlot(1); // initial save
+  state.scene = 'play';
+  showGameMenu();
+}
+
+function loadFromSlot(n) {
+  const data = getSlot(n);
+  if(!data){ addLog('Slot empty.'); alert('Slot is empty.'); return; }
+  state = data;
+  addLog('Loaded slot ' + n);
+  enterPlay();
+  renderAll();
+  state.scene = 'play';
+  showGameMenu();
+}
+
+/* --- Save to browser for settings */
+function localSaveSlots(){ localStorage.setItem('color_mylife_settings', JSON.stringify({volume: state.volume, language: state.language})); }
+function loadSettings(){ const raw = localStorage.getItem('color_mylife_settings'); if(raw){ const s=JSON.parse(raw); state.volume = s.volume||70; state.language = s.language||'en'; volumeEl.value = state.volume; } }
+
+/* Init */
+loadSettings();
+renderAll();
+addLog('Ready — v3 prototype loaded.');
+
+/* expose for console testing */
+window._CML = { state, saveToSlot, loadFromSlot, getSlot };
+
+/* Add error handling for images */
+portraitImg.onerror = function() {
+  this.src = 'fallback.png'; // Provide a fallback image
+  console.log('Failed to load portrait image');
+};
+
+rightPortrait.onerror = function() {
+  this.src = 'fallback.png'; // Provide a fallback image
+  console.log('Failed to load romance character image');
+};
+</script>
+</body>
+</html>
