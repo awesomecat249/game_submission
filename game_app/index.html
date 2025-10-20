@@ -192,7 +192,91 @@ body{margin:0;background:linear-gradient(180deg,#071226,#02101a);font-family:var
 <script>
 /* Color My Life v3 — single-file prototype
    Features: gender-selectable romance (Linh/Alex), 3 save slots, SFX via WebAudio, animated portraits, visuals.
+   UPDATED: language switching (EN/VI) and improved save-slot UI.
 */
+
+/* --- I18N --- */
+const I18N = {
+  en: {
+    appTitle: "Color My Life — v3",
+    sub: "Front-end prototype",
+    welcomeTitle: "Welcome",
+    welcomeSub: "Start a new game to choose who you'll meet.",
+    startHint: "This version includes animated characters, sfx, and save slots.",
+    play: "Play Game",
+    settings: "Settings",
+    about: "About",
+    gameMenu: "Game Menu",
+    newGame: "New Game",
+    saveGame: "Save Game",
+    loadGame: "Load Game",
+    backToMain: "Back to Main Menu",
+    volume: "Volume",
+    language: "Language",
+    back: "Back",
+    noEvent: "No event.",
+    journal: "Journal",
+    stats: "Stats",
+    tooTired: "You are too exhausted to do that. Rest first.",
+    notEnoughMoney: "Not enough money.",
+    slotEmpty: "Slot is empty.",
+    loadConfirm: "Load slot {n}?",
+    deleteConfirm: "Delete slot {n}?",
+    chooseRomance: "Choose who you'll meet: type 'linh' or 'alex' (case-insensitive). Default: linh",
+    playerNamePrompt: "Player name (default Minh):",
+    saveToSlotPrompt: "Save to which slot? (1-3)",
+    loadWhichSlotPrompt: "Load which slot? (1-3)",
+    gameEnded: "Game ended: {title}",
+    storyComplete: "Story complete.",
+    empty: "Empty",
+    savedAt: "Saved: {when}",
+    dayLabel: "Day",
+    slot: "Slot"
+  },
+  vi: {
+    appTitle: "Color My Life — v3",
+    sub: "Nguyên mẫu giao diện",
+    welcomeTitle: "Chào mừng",
+    welcomeSub: "Bắt đầu trò chơi mới để chọn người bạn sẽ gặp.",
+    startHint: "Phiên bản này có nhân vật động, âm thanh và ô lưu trò chơi.",
+    play: "Chơi",
+    settings: "Cài đặt",
+    about: "Giới thiệu",
+    gameMenu: "Menu Trò chơi",
+    newGame: "Trò chơi mới",
+    saveGame: "Lưu trò chơi",
+    loadGame: "Tải trò chơi",
+    backToMain: "Trở về Menu chính",
+    volume: "Âm lượng",
+    language: "Ngôn ngữ",
+    back: "Quay lại",
+    noEvent: "Không có sự kiện.",
+    journal: "Nhật ký",
+    stats: "Chỉ số",
+    tooTired: "Bạn quá mệt để làm việc đó. Hãy nghỉ ngơi trước.",
+    notEnoughMoney: "Không đủ tiền.",
+    slotEmpty: "Ô trống.",
+    loadConfirm: "Tải ô {n}?",
+    deleteConfirm: "Xóa ô {n}?",
+    chooseRomance: "Chọn người bạn sẽ gặp: gõ 'linh' hoặc 'alex' (không phân biệt hoa thường). Mặc định: linh",
+    playerNamePrompt: "Tên người chơi (Mặc định Minh):",
+    saveToSlotPrompt: "Lưu vào ô nào? (1-3)",
+    loadWhichSlotPrompt: "Tải ô nào? (1-3)",
+    gameEnded: "Trò chơi kết thúc: {title}",
+    storyComplete: "Truyện hoàn tất.",
+    empty: "Trống",
+    savedAt: "Lưu lúc: {when}",
+    dayLabel: "Ngày",
+    slot: "Ô"
+  }
+};
+
+function t(key, vars = {}) {
+  const lang = state.language || 'en';
+  let str = (I18N[lang] && I18N[lang][key]) || I18N['en'][key] || key;
+  for (const k in vars) str = str.replace(`{${k}}`, vars[k]);
+  return str;
+}
 
 /* --- State --- */
 const MAX_DAYS = 60;
@@ -210,6 +294,22 @@ let state = {
   scene: 'menu' // menu or play or ending
 };
 
+/* --- Localized events (small selection translated) --- */
+const EVENTS_EN = [
+  { id:1, title:"Old friend texts", text:"An old friend sends a photo. Do you reply?", A:{text:"Reply & meet", effects:{social:10,happiness:5,energy:-8}}, B:{text:"Leave it", effects:{social:-5,confidence:-2}} },
+  { id:2, title:"Unexpected rain", text:"Rain pours suddenly. What do you do?", A:{text:"Dance in the rain", effects:{happiness:10,energy:-6}}, B:{text:"Run home", effects:{energy:-2}} },
+  { id:6, title:"Stray cat", text:"A cat follows you home. Feed it?", A:{text:"Share food", effects:{happiness:10,money:-5}}, B:{text:"Shoo away", effects:{happiness:-4}} }
+];
+const EVENTS_VI = [
+  { id:1, title:"Bạn cũ nhắn", text:"Một người bạn cũ gửi ảnh. Bạn trả lời không?", A:{text:"Trả lời & gặp", effects:{social:10,happiness:5,energy:-8}}, B:{text:"Bỏ qua", effects:{social:-5,confidence:-2}} },
+  { id:2, title:"Mưa bất chợt", text:"Trời đổ mưa bất ngờ. Bạn làm gì?", A:{text:"Nhảy dưới mưa", effects:{happiness:10,energy:-6}}, B:{text:"Chạy về nhà", effects:{energy:-2}} },
+  { id:6, title:"Mèo hoang", text:"Một con mèo theo về nhà bạn. Cho ăn không?", A:{text:"Chia đồ ăn", effects:{happiness:10,money:-5}}, B:{text:"Đuổi đi", effects:{happiness:-4}} }
+];
+
+function getEvents() {
+  return state.language === 'vi' ? EVENTS_VI : EVENTS_EN;
+}
+
 /* --- Minimal character images as data URLs (SVG) --- */
 const characterImage = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" width="180" height="220" viewBox="0 0 180 220">
@@ -221,7 +321,6 @@ const characterImage = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
   <circle cx="115" cy="60" r="5" fill="black"/>
   <path d="M 60 90 Q 90 100 120 90" fill="none" stroke="black" stroke-width="3"/>
 </svg>`);
-
 const img_lin = characterImage;
 const img_alx = characterImage;
 const img_player = characterImage;
@@ -229,7 +328,6 @@ const img_player = characterImage;
 /* --- DOM refs --- */
 const saveSlotsEl = document.getElementById('saveSlots');
 const btnNew = document.getElementById('btnNew');
-const btnLoadSlot = document.getElementById('btnLoadSlot');
 const btnSettings = document.getElementById('btnSettings');
 const btnAbout = document.getElementById('btnAbout');
 const volumeEl = document.getElementById('volume');
@@ -258,36 +356,9 @@ function initAudio(){
   masterGain.gain.value = state.volume/100;
   masterGain.connect(audioCtx.destination);
 }
-function playClick(){
-  initAudio();
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = 'sine'; o.frequency.value = 880;
-  g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.08, audioCtx.currentTime + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
-  o.connect(g); g.connect(masterGain);
-  o.start(); o.stop(audioCtx.currentTime + 0.2);
-}
-function playChime(){
-  initAudio();
-  const o = audioCtx.createOscillator();
-  const o2 = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.frequency.value = 660; o.type='sine';
-  o2.frequency.value = 990; o2.type='triangle';
-  g.gain.value = 0.0001;
-  g.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
-  o.connect(g); o2.connect(g); g.connect(masterGain);
-  o.start(); o2.start();
-  o.stop(audioCtx.currentTime + 0.6); o2.stop(audioCtx.currentTime + 0.6);
-}
-function setVolume(v){
-  state.volume = v;
-  if(masterGain) masterGain.gain.setTargetAtTime(v/100, audioCtx.currentTime, 0.02);
-  localSaveSlots();
-}
+function playClick(){ initAudio(); const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type='sine'; o.frequency.value=880; g.gain.setValueAtTime(0.0001,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.08,audioCtx.currentTime+0.01); g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.18); o.connect(g); g.connect(masterGain); o.start(); o.stop(audioCtx.currentTime+0.2); }
+function playChime(){ initAudio(); const o = audioCtx.createOscillator(); const o2 = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.frequency.value = 660; o.type='sine'; o2.frequency.value = 990; o2.type='triangle'; g.gain.value = 0.0001; g.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6); o.connect(g); o2.connect(g); g.connect(masterGain); o.start(); o2.start(); o.stop(audioCtx.currentTime + 0.6); o2.stop(audioCtx.currentTime + 0.6); }
+function setVolume(v){ state.volume = v; if(masterGain) masterGain.gain.setTargetAtTime(v/100, audioCtx.currentTime, 0.02); localSaveSlots(); }
 
 /* --- Save slot system (3 slots) --- */
 function localSlotKey(n){ return 'color_mylife_slot_' + n; }
@@ -296,81 +367,101 @@ function getSlot(n){
   return raw ? JSON.parse(raw) : null;
 }
 function saveToSlot(n){
-  const snapshot = Object.assign({}, state);
+  const snapshot = JSON.parse(JSON.stringify(state));
   snapshot.savedAt = Date.now();
   localStorage.setItem(localSlotKey(n), JSON.stringify(snapshot));
-  addLog('Saved to slot ' + n);
+  addLog(t('savedAt', {when: new Date(snapshot.savedAt).toLocaleString()}));
   renderSaveSlots();
 }
 function loadFromSlot(n){
   const data = getSlot(n);
-  if(!data){ addLog('Slot empty.'); alert('Slot is empty.'); return; }
+  if(!data){ addLog(t('slotEmpty')); alert(t('slotEmpty')); return; }
   state = data;
-  addLog('Loaded slot ' + n);
-  enterPlay();
+  state.scene = 'play';
+  addLog(t('loadConfirm',{n}));
   renderAll();
+}
+function deleteSlot(n){
+  if(!getSlot(n)) return;
+  if(confirm(t('deleteConfirm',{n}))){
+    localStorage.removeItem(localSlotKey(n));
+    renderSaveSlots();
+  }
 }
 
 /* Autosave nightly to slot 1 */
-function autoSaveNight(){
-  saveToSlot(1);
-}
+function autoSaveNight(){ saveToSlot(1); }
 
-/* Render save slots UI */
+/* Render save slots UI (improved) */
 function renderSaveSlots(){
   saveSlotsEl.innerHTML = '';
   for(let i=1;i<=3;i++){
     const s = getSlot(i);
-    const slot = document.createElement('div'); slot.className='slot' + (s ? '' : ' empty'); slot.dataset.slot = i;
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (s ? '' : ' empty') + (state.slot===i ? ' current' : '');
+    slot.dataset.slot = i;
+
+    const left = document.createElement('div'); left.style.display='flex'; left.style.gap='8px'; left.style.alignItems='center';
     const thumb = document.createElement('div'); thumb.className='thumbnail';
     const meta = document.createElement('div'); meta.className='meta';
+
     if(s){
       const img = document.createElement('img'); img.src = s.genderRomance === 'linh' ? img_lin : img_alx; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover';
       thumb.appendChild(img);
-      meta.innerHTML = `<div class="charName">${s.name} — Day ${s.day}</div><div style="font-size:12px;color:var(--muted)">Happiness ${Math.round(s.stats.happiness)}</div><div style="font-size:11px;color:var(--muted)">${s.genderRomance.toUpperCase()}</div>`;
-    } else {
-      thumb.innerHTML = 'Empty';
-      meta.innerHTML = `<div style="color:var(--muted);font-size:13px">Empty slot</div>`;
+      const when = s.savedAt ? new Date(s.savedAt).toLocaleString() : '';
+      meta.innerHTML = `<div class="charName">${s.name} — ${t('dayLabel')} ${s.day}</div><div style="font-size:12px;color:var(--muted)">${t('savedAt',{when})}</div><div style="font-size:11px;color:var(--muted)">${s.genderRomance.toUpperCase()}</div>`;    } else {
+      thumb.innerText = t('empty');
+      meta.innerHTML = `<div style="color:var(--muted);font-size:13px">${t('empty')} ${t('slot')} ${i}</div>`;
     }
-    slot.appendChild(thumb); slot.appendChild(meta);
+
+    left.appendChild(thumb);
+    left.appendChild(meta);
+
+    const controls = document.createElement('div');
+    controls.style.display='flex';
+    controls.style.flexDirection='column';
+    controls.style.gap='6px';
+    controls.style.marginLeft='auto';
+
+    const btnLoad = document.createElement('button'); btnLoad.className='btn secondary small'; btnLoad.innerText = t('loadGame');
+    btnLoad.addEventListener('click', (e)=>{ e.stopPropagation(); if(!getSlot(i)){ alert(t('slotEmpty')); return; } if(confirm(t('loadConfirm',{n:i}))) loadFromSlot(i); });
+
+    const btnSave = document.createElement('button'); btnSave.className='btn small'; btnSave.innerText = t('saveGame');
+    btnSave.addEventListener('click', (e)=>{ e.stopPropagation(); saveToSlot(i); alert(t('savedAt',{when: new Date().toLocaleString()})); });
+
+    const btnDelete = document.createElement('button'); btnDelete.className='btn secondary small'; btnDelete.innerText = 'Del';
+    btnDelete.addEventListener('click',(e)=>{ e.stopPropagation(); deleteSlot(i); });
+
+    controls.appendChild(btnSave);
+    controls.appendChild(btnLoad);
+    controls.appendChild(btnDelete);
+
+    slot.appendChild(left);
+    slot.appendChild(controls);
+
+    // clicking the slot will set it as active slot (quick select)
     slot.addEventListener('click', ()=>{
-      // select slot
-      const idx = Number(slot.dataset.slot);
-      if(confirm('Load slot '+idx+'?')) loadFromSlot(idx);
+      state.slot = Number(slot.dataset.slot);
+      addLog('Selected slot ' + state.slot);
+      renderSaveSlots();
     });
+
     saveSlotsEl.appendChild(slot);
   }
 }
 
 /* --- UI helpers --- */
-function addLog(msg){
-  // Log removed, function now does nothing
-  console.log(msg); // Optional: keep logging to console for debugging
-}
+function addLog(msg){ console.log(msg); }
 function clamp(v,a=0,b=100){ return Math.max(a, Math.min(b, v)); }
 
 /* --- Game logic (simplified) --- */
-const events = [
-  { id:1, title:"Old friend texts", text:"An old friend sends a photo. Do you reply?", A:{text:"Reply & meet", effects:{social:10,happiness:5,energy:-8}}, B:{text:"Leave it", effects:{social:-5,confidence:-2}} },
-  { id:2, title:"Unexpected rain", text:"Rain pours suddenly. What do you do?", A:{text:"Dance in the rain", effects:{happiness:10,energy:-6}}, B:{text:"Run home", effects:{energy:-2}} },
-  { id:3, title:"Neighbor asks help", text:"Linh asks for help. Help her?", A:{text:"Help", effects:{social:8,confidence:4}}, B:{text:"Refuse", effects:{social:-8}} },
-  { id:4, title:"Mom calls", text:"Your mom calls. Call back?", A:{text:"Call & chat", effects:{social:8,happiness:5}}, B:{text:"Text short reply", effects:{social:2}} },
-  // New events
-  { id:5, title:"Street musician", text:"A guitarist plays in the park. Stop to listen?", A:{text:"Stay awhile", effects:{happiness:8,energy:-4,money:-2}}, B:{text:"Walk past", effects:{}} },
-  { id:6, title:"Stray cat", text:"A cat follows you home. Feed it?", A:{text:"Share food", effects:{happiness:10,money:-5}}, B:{text:"Shoo away", effects:{happiness:-4}} },
-  { id:7, title:"Job opportunity", text:"A colleague mentions a better position.", A:{text:"Apply for it", effects:{confidence:12,energy:-15,money:15}}, B:{text:"Stay comfortable", effects:{confidence:-4}} },
-  { id:8, title:"Late night thoughts", text:"Can't sleep. Write in journal?", A:{text:"Write feelings", effects:{happiness:6,confidence:4,energy:-5}}, B:{text:"Force sleep", effects:{energy:-8}} },
-  { id:9, title:"Coffee invite", text:"Someone invites you for coffee.", A:{text:"Accept", effects:{social:12,energy:-8,money:-6}}, B:{text:"Decline", effects:{social:-6}} },
-  { id:10, title:"Plant wilting", text:"Your plant needs care. Buy supplies?", A:{text:"Save it", effects:{happiness:8,money:-10}}, B:{text:"Let it go", effects:{happiness:-5}} }
-];
-
-function startNewGame(){
-  // choose romance gender first
-  const choice = prompt("Choose who you'll meet: type 'linh' or 'alex' (case-insensitive). Default: linh");
+function startNewGameFlow(){
+  const choice = prompt(t('chooseRomance')) || '';
+  const name = prompt(t('playerNamePrompt'), "Minh") || "Minh";
   state = {
     slot: state.slot || 1,
     day: 1,
-    name: prompt("Player name (default Minh):","Minh") || "Minh",
+    name: name,
     genderRomance: (choice && choice.toLowerCase()==='alex') ? 'alex' : 'linh',
     stats: { happiness:15, energy:80, money:50, social:10, confidence:5 },
     journal: [], language: state.language || 'en', volume: state.volume || 70, romanceLevel:0, pet:false, scene:'play'
@@ -379,59 +470,49 @@ function startNewGame(){
   renderAll();
   addLog('New game started. Romance: '+state.genderRomance);
   playChime();
-  saveToSlot(1); // initial save
+  saveToSlot(state.slot); // initial save to selected slot
 }
 
 /* Actions */
 function setActionsForPlay(){
   actions.innerHTML = '';
-  // If game has ended, don't show any actions
   if(state.day >= MAX_DAYS) {
-    actions.innerHTML = '<div style="color:var(--muted);padding:10px;">Story complete. Thank you for playing.</div>';
+    actions.innerHTML = `<div style="color:var(--muted);padding:10px;">${t('storyComplete')}</div>`;
     return;
   }
-  
   const acts = [
-    {id:'decorate',label:'Decorate home'},
-    {id:'socialize',label:'Socialize'},
-    {id:'work',label:'Work overtime'},
-    {id:'selfcare',label:'Self-care'}
+    {id:'decorate',label: t('decorate') || 'Decorate home'},
+    {id:'socialize',label: t('socialize') || 'Socialize'},
+    {id:'work',label: t('work') || 'Work overtime'},
+    {id:'selfcare',label: t('selfcare') || 'Self-care'}
   ];
+  // ensure keys exist in I18N fallback
   acts.forEach(a=>{
     const btn = document.createElement('button'); btn.className='action'; btn.innerText = a.label;
-    // disable actions that require energy when energy is 0 (except self-care)
     if(state.stats.energy <= 0 && a.id !== 'selfcare'){
       btn.disabled = true;
       btn.className = 'action ghost';
-      btn.title = 'Too tired — rest first';
+      btn.title = t('tooTired');
     }
     btn.addEventListener('click', ()=>{ performAction(a.id); playClick(); });
     actions.appendChild(btn);
   });
 }
 
-/* Perform action effects */
+/* Perform action effects (same as before) */
 function performAction(id){
   const s = state.stats;
   let entry = '';
-  // block energy-requiring actions if energy is zero
-  if(s.energy <= 0 && id !== 'selfcare'){
-    addLog('Too exhausted to act');
-    alert('You are too exhausted to do that. Rest first.');
-    return;
-  }
+  if(s.energy <= 0 && id !== 'selfcare'){ addLog(t('tooTired')); alert(t('tooTired')); return; }
 
   if(id==='decorate'){
-    if(s.money < 8){ addLog('Not enough money'); alert('Not enough money to decorate.'); return; }
+    if(s.money < 8){ addLog(t('notEnoughMoney')); alert(t('notEnoughMoney')); return; }
     s.money -= 8; s.happiness = clamp(s.happiness + 8); s.confidence = clamp(s.confidence + 2); s.energy = clamp(s.energy - 6);
     entry = "Bought a plant and rug.";
   } else if(id==='socialize'){
     s.social = clamp(s.social + 10); s.happiness = clamp(s.happiness + 5 + Math.floor(s.confidence/10)); s.energy = clamp(s.energy - 10);
     entry = "Met someone for coffee.";
-    // chance to trigger romance interaction
-    if(Math.random() < 0.35){
-      triggerRomanceMoment();
-    }
+    if(Math.random() < 0.35) triggerRomanceMoment();
   } else if(id==='work'){
     s.money = clamp(s.money + 20); s.energy = clamp(s.energy - 18); s.happiness = clamp(s.happiness - 6);
     entry = "Worked late for extra pay.";
@@ -441,29 +522,28 @@ function performAction(id){
   }
   addLog(entry);
   state.journal.push(`Day ${state.day}: ${entry} — "${monologueFor('after_action')}"`);
-  // small chance for event
   if(Math.random() < 0.5) triggerRandomEvent();
   endOfDay();
   renderAll();
   playChime();
 }
 
-/* Random events */
+/* Random events (localized) */
 function triggerRandomEvent(){
-  const ev = events[Math.floor(Math.random()*events.length)];
+  const list = getEvents();
+  const ev = list[Math.floor(Math.random()*list.length)];
   eventBox.innerHTML = `<div style="font-weight:800">${ev.title}</div><div style="margin-top:6px">${ev.text}</div>
     <div style="margin-top:8px;display:flex;gap:6px"><button class="action" id="evA">${ev.A.text}</button><button class="action ghost" id="evB">${ev.B.text}</button></div>`;
-  document.getElementById('evA').addEventListener('click', ()=>{ applyEffects(ev.A.effects); eventBox.innerHTML='Event resolved.'; state.journal.push(`Day ${state.day}: ${ev.A.text}`); renderAll(); });
-  document.getElementById('evB').addEventListener('click', ()=>{ applyEffects(ev.B.effects); eventBox.innerHTML='Event resolved.'; state.journal.push(`Day ${state.day}: ${ev.B.text}`); renderAll(); });
+  document.getElementById('evA').addEventListener('click', ()=>{ applyEffects(ev.A.effects); eventBox.innerHTML=t('noEvent'); state.journal.push(`Day ${state.day}: ${ev.A.text}`); renderAll(); });
+  document.getElementById('evB').addEventListener('click', ()=>{ applyEffects(ev.B.effects); eventBox.innerHTML=t('noEvent'); state.journal.push(`Day ${state.day}: ${ev.B.text}`); renderAll(); });
 }
 
-/* Romance moments: animated portrait + increases romanceLevel */
+/* Romance moments */
 function triggerRomanceMoment(){
-  // show character speaking with portrait change; increase romance mildly
   const who = state.genderRomance;
   setPortrait(true);
-  const line = who==='linh' ? "Linh smiles and shares a small story." : "Alex jokes about the morning commute.";
-  eventBox.innerHTML = `<div style="font-weight:800">A quiet moment with ${who.charAt(0).toUpperCase()+who.slice(1)}</div><div style="margin-top:6px">${line}</div>`;
+  const line = who==='linh' ? (state.language==='vi' ? "Linh mỉm cười và kể một câu chuyện nhỏ." : "Linh smiles and shares a small story.") : (state.language==='vi' ? "Alex trêu về chuyến đi sáng." : "Alex jokes about the morning commute.");
+  eventBox.innerHTML = `<div style="font-weight:800">${state.language==='vi' ? 'Khoảnh khắc yên ắng với' : 'A quiet moment with'} ${who.charAt(0).toUpperCase()+who.slice(1)}</div><div style="margin-top:6px">${line}</div>`;
   state.romanceLevel = clamp(state.romanceLevel + 8);
   state.journal.push(`Day ${state.day}: A small moment with ${who}.`);
   addLog('Romance increased to '+state.romanceLevel);
@@ -484,118 +564,63 @@ function endOfDay(){
   state.day++;
   state.stats.energy = clamp(state.stats.energy - 2);
   if(state.day % 7 === 0) state.stats.confidence = clamp(state.stats.confidence + 1);
-  // adopt pet chance
   if(!state.pet && state.stats.happiness >= 55 && Math.random() < 0.12){ state.pet = true; addLog('You adopted a small cat.'); }
-  // autosave to slot 1 nightly
   autoSaveNight();
-  // Force ending at day 60
   if(state.day >= MAX_DAYS) {
     checkEnding();
-    state.scene = 'ending'; // Add new scene state
+    state.scene = 'ending';
     renderAll();
   }
 }
 
-/* Monologues */
+/* Monologues (kept same) */
 function monologueFor(key){
   const s = state.stats;
   const base = {
-    morning: [
-      "The light through the blinds feels colder these days.",
-      "Same walls. Same ceiling.",
-      "Maybe today will be different. Maybe.",
-      "Another sunrise. The city wakes slowly.",
-      "The morning air feels crisp today.",
-      "Coffee might make this better."
-    ],
-    after_action: [
-      "It wasn't much, but at least I did something.",
-      "That didn't feel as bad as I thought it would.",
-      "Breathing felt like permission to exist for a minute.",
-      "Small steps still move forward.",
-      "The day feels a little lighter now.",
-      "Sometimes change is subtle like this."
-    ],
-    low: [
-      "I'm tired...",
-      "Maybe I should give my mom a call.",
-      "I watched the street from my window for a while.",
-      "The silence feels heavy today.",
-      "Everything takes so much energy.",
-      "Just need to make it through today."
-    ],
-    high: [
-      "The world has more color than before.",
-      "Maybe things are slowly changing.",
-      "I caught myself smiling today.",
-      "The future feels less gray somehow.",
-      "Small victories add up.",
-      "There's beauty in these quiet moments."
-    ]
+    morning:[ "The light through the blinds feels colder these days.","Same walls. Same ceiling.","Maybe today will be different. Maybe.","Another sunrise. The city wakes slowly.","The morning air feels crisp today.","Coffee might make this better." ],
+    after_action:[ "It wasn't much, but at least I did something.","That didn't feel as bad as I thought it would.","Breathing felt like permission to exist for a minute.","Small steps still move forward.","The day feels a little lighter now.","Sometimes change is subtle like this." ],
+    low:[ "I'm tired...","Maybe I should give my mom a call.","I watched the street from my window for a while.","The silence feels heavy today.","Everything takes so much energy.","Just need to make it through today." ],
+    high:[ "The world has more color than before.","Maybe things are slowly changing.","I caught myself smiling today.","The future feels less gray somehow.","Small victories add up.","There's beauty in these quiet moments." ]
   };
-
   let pool = base.after_action;
   if(s.happiness < 25) pool = pool.concat(base.low);
   if(s.happiness > 70) pool = pool.concat(base.high);
-  if(state.romanceLevel > 40) pool = pool.concat([
-    "When they smiled, it echoed in the quiet corners of my mind.",
-    "Their presence makes the room feel warmer.",
-    "Some connections change everything.",
-    "The way they see the world is contagious.",
-    "Their laughter makes the day brighter."
-  ]);
-  if(state.pet) pool = pool.concat([
-    "The cat purrs softly nearby.",
-    "Having a pet makes the apartment feel less empty.",
-    "Small paws make quiet sounds at night."
-  ]);
+  if(state.romanceLevel > 40) pool = pool.concat([ "When they smiled, it echoed in the quiet corners of my mind.","Their presence makes the room feel warmer.","Some connections change everything.","The way they see the world is contagious.","Their laughter makes the day brighter." ]);
+  if(state.pet) pool = pool.concat([ "The cat purrs softly nearby.","Having a pet makes the apartment feel less empty.","Small paws make quiet sounds at night." ]);
   return pool[Math.floor(Math.random()*pool.length)];
 }
 
 /* Portrait setting and animation */
 function setPortrait(animate=false){
   if(state.scene === 'menu') return;
-  
-  const handleImageError = (img) => {
-    console.error('Failed to load image:', img.src);
-    img.src = './images/character.png'; // Fallback to local image
-  };
-  
-  // Set both portraits
+  const handleImageError = (img) => { img.src = './images/character.png'; };
   portraitImg.src = img_player;
   portraitImg.onerror = () => handleImageError(portraitImg);
-  
   const rightPortrait = document.getElementById('rightPortrait');
   rightPortrait.src = state.genderRomance === 'linh' ? img_lin : img_alx;
   rightPortrait.onerror = () => handleImageError(rightPortrait);
-  
   portrait.classList.remove('show');
   const romancePortrait = document.getElementById('romancePortrait');
   romancePortrait.classList.remove('show');
-  
-  setTimeout(() => {
-    portrait.classList.add('show');
-    romancePortrait.classList.add('show');
-  }, animate ? 40 : 200);
+  setTimeout(() => { portrait.classList.add('show'); romancePortrait.classList.add('show'); }, animate ? 40 : 200);
 }
 
 /* Check endings */
 function checkEnding(){
   const s = state.stats;
   let ending = {title:'',text:''};
-  if(s.happiness >= 70 && state.romanceLevel >= 70) ending = {title:'They Found Light — Together', text:'They share morning coffee and small laughter. The world looks kinder.'};
-  else if(s.happiness >= 70) ending = {title:'Light Within', text:'He learned to smile at small things; life gained color.'};
-  else ending = {title:'Still Gray', text:'Progress was slow — but he holds a new fragile hope.'};
-  // show ending
-  sceneTitle.innerText = 'Ending — ' + ending.title;
+  if(s.happiness >= 70 && state.romanceLevel >= 70) ending = {title: state.language==='vi' ? 'Họ tìm thấy ánh sáng — cùng nhau' : 'They Found Light — Together', text: state.language==='vi' ? 'Họ chia cà phê buổi sáng và tiếng cười nhỏ. Thế giới dịu dàng hơn.' : 'They share morning coffee and small laughter. The world looks kinder.'};
+  else if(s.happiness >= 70) ending = {title: state.language==='vi' ? 'Ánh sáng nội tâm' : 'Light Within', text: state.language==='vi' ? 'Anh ấy học được cách mỉm cười trước những điều nhỏ; cuộc sống có màu.' : 'He learned to smile at small things; life gained color.'};
+  else ending = {title: state.language==='vi' ? 'Vẫn xám' : 'Still Gray', text: state.language==='vi' ? 'Tiến bộ chậm — nhưng anh ấy giữ một hy vọng mong manh.' : 'Progress was slow — but he holds a new fragile hope.'};
+  sceneTitle.innerText = (state.language==='vi' ? 'Kết thúc — ' : 'Ending — ') + ending.title;
   mainText.innerText = ending.text;
   actions.innerHTML = '';
   eventBox.innerHTML = '';
   addLog('Game ended: ' + ending.title);
-  alert('Game ended: ' + ending.title);
+  alert(t('gameEnded',{title: ending.title}));
 }
 
-/* Render helpers */
+/* Render helpers (updated to use i18n strings) */
 function renderStats(){
   statList.innerHTML = '';
   const items = ['happiness','energy','money','social','confidence'];
@@ -608,7 +633,7 @@ function renderStats(){
   dayNum.innerText = state.day;
   // mood label
   const h = state.stats.happiness;
-  const mood = h < 30 ? 'Gloomy' : h < 60 ? 'Stable' : 'Bright';
+  const mood = h < 30 ? 'U sầu' : h < 60 ? 'Ổn định' : 'Sáng';
   document.getElementById('moodLabel').innerText = mood;
   
   // Enhanced brightness adjustments based on happiness
@@ -635,32 +660,45 @@ function renderStats(){
   document.body.style.background = `linear-gradient(180deg,${lightColor},${darkColor})`;
 }
 
-/* Render main UI */
+/* Render main UI (updates copyable UI strings) */
 function renderAll(){
+  // Update header/sub
+  document.querySelector('.h-title').innerText = t('appTitle');
+  document.querySelector('.h-sub').innerText = t('sub');
+
+  // Update buttons & static labels
+  document.getElementById('btnPlay').innerText = t('play');
+  document.getElementById('btnSettings').innerText = t('settings');
+  document.getElementById('btnAbout').innerText = t('about');
+  document.getElementById('btnNew').innerText = t('newGame');
+  document.getElementById('btnSave').innerText = t('saveGame');
+  document.getElementById('btnLoad').innerText = t('loadGame');
+  document.getElementById('btnBackToMain').innerText = t('backToMain');
+  document.getElementById('btnBackFromSettings').innerText = t('back');
+
   renderSaveSlots();
   renderStats();
   journalEl.innerHTML = state.journal.slice().reverse().map(s=>`<div style="padding:6px 0;border-bottom:1px dashed rgba(255,255,255,0.02)">${s}</div>`).join('');
-  
-  // Always set portraits
+
   setPortrait();
-  
+
   if(state.scene === 'ending'){
-    sceneTitle.innerText = `${state.name}'s Story — Complete`;
-    sceneSub.innerText = 'Day 60 — Journey\'s End';
-    mainText.innerText = 'Thank you for playing. Your story has reached its conclusion.';
+    sceneTitle.innerText = `${state.name}'s Story — ${state.language==='vi' ? 'Hoàn tất' : 'Complete'}`;
+    sceneSub.innerText = `${t('dayLabel')} ${MAX_DAYS} — ${state.language==='vi' ? 'Hồi kết' : "Journey's End"}`;
+    mainText.innerText = state.language==='vi' ? 'Cảm ơn bạn đã chơi. Câu chuyện của bạn đã kết thúc.' : 'Thank you for playing. Your story has reached its conclusion.';
     actions.innerHTML = '';
-    eventBox.innerHTML = 'Story complete.';
+    eventBox.innerHTML = t('storyComplete');
   } else if(state.scene === 'menu'){
-    sceneTitle.innerText = 'Welcome';
-    sceneSub.innerText = 'Select a save slot or start a new game.';
-    mainText.innerText = 'Choose settings and then press New Game.';
+    sceneTitle.innerText = t('welcomeTitle');
+    sceneSub.innerText = t('welcomeSub');
+    mainText.innerText = t('startHint');
     actions.innerHTML = '';
     // Clear portraits in menu
     portraitImg.src = '';
     document.getElementById('rightPortrait').src = '';
   } else {
     sceneTitle.innerText = `${state.name}'s Apartment`;
-    sceneSub.innerText = `Day ${state.day} — ${getChapterName()}`;
+    sceneSub.innerText = `${t('dayLabel')} ${state.day} — ${getChapterName()}`;
     mainText.innerText = monologueFor('after_action');
     setActionsForPlay();
   }
@@ -668,13 +706,13 @@ function renderAll(){
 
 /* Get chapter name */
 function getChapterName(){
-  if(state.day <=15) return 'The Gray';
-  if(state.day <=30) return 'The Flicker';
-  if(state.day <=45) return 'The Color';
-  return 'The Light';
+  if(state.day <=15) return state.language==='vi' ? 'Xám' : 'The Gray';
+  if(state.day <=30) return state.language==='vi' ? 'Chớp sáng' : 'The Flicker';
+  if(state.day <=45) return state.language==='vi' ? 'Màu sắc' : 'The Color';
+  return state.language==='vi' ? 'Ánh sáng' : 'The Light';
 }
 
-/* Slot UI events */
+/* Slot UI events (buttons) */
 function showMainMenu() {
   document.getElementById('mainMenu').classList.remove('hidden');
   document.getElementById('gameMenu').classList.add('hidden');
@@ -682,75 +720,50 @@ function showMainMenu() {
   state.scene = 'menu';
   renderAll();
 }
-
 function showGameMenu() {
   document.getElementById('mainMenu').classList.add('hidden');
   document.getElementById('gameMenu').classList.remove('hidden');
   document.getElementById('settingsMenu').classList.add('hidden');
-  if(state.scene !== 'menu') {
-    setPortrait();
-    renderAll();
-  }
+  if(state.scene !== 'menu') { setPortrait(); renderAll(); }
 }
-
 function showSettings() {
   document.getElementById('mainMenu').classList.add('hidden');
   document.getElementById('gameMenu').classList.add('hidden');
   document.getElementById('settingsMenu').classList.remove('hidden');
 }
 
+/* Wire basic controls */
 document.getElementById('btnPlay').addEventListener('click', showGameMenu);
 document.getElementById('btnSettings').addEventListener('click', showSettings);
 document.getElementById('btnBackToMain').addEventListener('click', showMainMenu);
 document.getElementById('btnBackFromSettings').addEventListener('click', showMainMenu);
-document.getElementById('btnNew').addEventListener('click', startNewGame);
+document.getElementById('btnNew').addEventListener('click', startNewGameFlow);
 document.getElementById('btnSave').addEventListener('click', ()=>{ 
-  const s = prompt('Save to which slot? (1-3)'); 
-  if(s && s >= 1 && s <= 3) saveToSlot(Number(s)); 
+  const s = prompt(t('saveToSlotPrompt'));
+  if(s && s >= 1 && s <= 3) saveToSlot(Number(s));
 });
 document.getElementById('btnLoad').addEventListener('click', ()=>{ 
-  const s = prompt('Load which slot? (1-3)'); 
-  if(s && s >= 1 && s <= 3) loadFromSlot(Number(s)); 
+  const s = prompt(t('loadWhichSlotPrompt'));
+  if(s && s >= 1 && s <= 3) { if(!getSlot(Number(s))) { alert(t('slotEmpty')); return; } if(confirm(t('loadConfirm',{n:s}))) loadFromSlot(Number(s)); }
 });
-document.getElementById('btnMenu').addEventListener('click', showMainMenu);
-document.getElementById('btnAbout').addEventListener('click', ()=>{ alert('Color My Life v3 — Prototype. Gender-selectable romance. SFX & Save Slots.'); });
+document.getElementById('btnAbout').addEventListener('click', ()=>{ alert(state.language==='vi' ? 'Color My Life v3 — Nguyên mẫu. Tùy chọn tình cảm theo giới. Âm thanh & ô lưu.' : 'Color My Life v3 — Prototype. Gender-selectable romance. SFX & Save Slots.'); });
 
-function startNewGame() {
-  // choose romance gender first
-  const choice = prompt("Choose who you'll meet: type 'linh' or 'alex' (case-insensitive). Default: linh");
-  state = {
-    slot: state.slot || 1,
-    day: 1,
-    name: prompt("Player name (default Minh):","Minh") || "Minh",
-    genderRomance: (choice && choice.toLowerCase()==='alex') ? 'alex' : 'linh',
-    stats: { happiness:15, energy:80, money:50, social:10, confidence:5 },
-    journal: [], language: state.language || 'en', volume: state.volume || 70, romanceLevel:0, pet:false, scene:'play'
-  };
-  setPortrait();
-  renderAll();
-  addLog('New game started. Romance: '+state.genderRomance);
-  playChime();
-  saveToSlot(1); // initial save
-  state.scene = 'play';
-  showGameMenu();
-}
+/* Language flags */
+langEls.forEach(el=>{
+  el.addEventListener('click', ()=>{
+    const lang = el.dataset.lang;
+    state.language = lang;
+    volumeEl.value = state.volume || 70;
+    localSaveSlots();
+    renderAll();
+  });
+});
 
-function loadFromSlot(n) {
-  const data = getSlot(n);
-  if(!data){ addLog('Slot empty.'); alert('Slot is empty.'); return; }
-  state = data;
-  addLog('Loaded slot ' + n);
-  enterPlay();
-  renderAll();
-  state.scene = 'play';
-  showGameMenu();
-}
-
-/* --- Save to browser for settings */
+/* --- Save settings --- */
 function localSaveSlots(){ localStorage.setItem('color_mylife_settings', JSON.stringify({volume: state.volume, language: state.language})); }
 function loadSettings(){ const raw = localStorage.getItem('color_mylife_settings'); if(raw){ const s=JSON.parse(raw); state.volume = s.volume||70; state.language = s.language||'en'; volumeEl.value = state.volume; } }
 
-/* Init */
+/* Initialization */
 loadSettings();
 renderAll();
 addLog('Ready — v3 prototype loaded.');
@@ -759,15 +772,8 @@ addLog('Ready — v3 prototype loaded.');
 window._CML = { state, saveToSlot, loadFromSlot, getSlot };
 
 /* Add error handling for images */
-portraitImg.onerror = function() {
-  this.src = 'fallback.png'; // Provide a fallback image
-  console.log('Failed to load portrait image');
-};
-
-rightPortrait.onerror = function() {
-  this.src = 'fallback.png'; // Provide a fallback image
-  console.log('Failed to load romance character image');
-};
+portraitImg.onerror = function() { this.src = 'fallback.png'; console.log('Failed to load portrait image'); };
+document.getElementById('rightPortrait').onerror = function() { this.src = 'fallback.png'; console.log('Failed to load romance character image'); };
 </script>
 </body>
 </html>
